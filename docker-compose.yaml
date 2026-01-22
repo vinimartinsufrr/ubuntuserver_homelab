@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  # Pi-hole: Filtragem de DNS e bloqueio de anúncios na rede local
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8090:80/tcp"
+    environment:
+      TZ: 'America/Boa_Vista'
+      WEBPASSWORD: 'admin' # Alterar após o primeiro login
+      DNSMASQ_LISTENING: 'all'
+    volumes:
+      - './etc-pihole:/etc/pihole'
+      - './etc-dnsmasq.d:/etc/dnsmasq.d'
+    restart: unless-stopped
+
+# Redes e volumes podem ser expandidos nos próximos commits
+networks:
+  default:
+    name: homelab_network
