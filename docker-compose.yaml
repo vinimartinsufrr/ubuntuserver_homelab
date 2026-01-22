@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  # Pi-hole: Filtragem de DNS e bloqueio de anúncios na rede local
+  # Pi-hole: Filtragem de DNS e bloqueio de anúncios
   pihole:
     image: pihole/pihole:latest
     container_name: pihole
@@ -18,7 +18,7 @@ services:
       - './etc-dnsmasq.d:/etc/dnsmasq.d'
     restart: unless-stopped
 
-  # Banco de dados para o Nextcloud
+  # Banco de dados e aplicação Nextcloud
   nextcloud-db:
     image: mariadb:10.6
     container_name: nextcloud-db
@@ -31,7 +31,6 @@ services:
     volumes:
       - nextcloud_db:/var/lib/mysql
 
-  # Aplicação Nextcloud - Sincronização e nuvem privada
   nextcloud-app:
     image: nextcloud
     container_name: nextcloud-app
@@ -45,7 +44,6 @@ services:
       - nextcloud-db
 
   # --- Automação de Mídia & Downloads ---
-
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
@@ -66,9 +64,6 @@ services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
     container_name: prowlarr
-    environment:
-      - PUID=1000
-      - PGID=1000
     volumes:
       - /backup/prowlarr:/config
     ports:
@@ -78,9 +73,6 @@ services:
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
-    environment:
-      - PUID=1000
-      - PGID=1000
     volumes:
       - /backup/sonarr:/config
       - /backup/media/series:/tv
@@ -92,9 +84,6 @@ services:
   radarr:
     image: lscr.io/linuxserver/radarr:latest
     container_name: radarr
-    environment:
-      - PUID=1000
-      - PGID=1000
     volumes:
       - /backup/radarr:/config
       - /backup/media/movies:/movies
@@ -118,9 +107,6 @@ services:
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
-    environment:
-      - PUID=1000
-      - PGID=1000
     volumes:
       - /backup/bazarr:/config
       - /backup/media/series:/tv
@@ -128,6 +114,68 @@ services:
     ports:
       - 6767:6767
     restart: unless-stopped
+
+  # --- Monitoramento & Observabilidade ---
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: always
+    ports:
+      - "3001:3001"
+    volumes:
+      - /backup/monitoramento/uptime-kuma:/app/data
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - /backup/monitoramento/prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - /backup/monitoramento/grafana:/var/lib/grafana
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: always
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "9100:9100"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: always
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8082:8080"
 
 networks:
   default:
