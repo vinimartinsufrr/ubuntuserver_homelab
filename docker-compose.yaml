@@ -11,14 +11,45 @@ services:
       - "8090:80/tcp"
     environment:
       TZ: 'America/Boa_Vista'
-      WEBPASSWORD: 'admin' # Alterar após o primeiro login
+      WEBPASSWORD: 'admin' 
       DNSMASQ_LISTENING: 'all'
     volumes:
       - './etc-pihole:/etc/pihole'
       - './etc-dnsmasq.d:/etc/dnsmasq.d'
     restart: unless-stopped
 
-# Redes e volumes podem ser expandidos nos próximos commits
+  # Banco de dados para o Nextcloud
+  nextcloud-db:
+    image: mariadb:10.6
+    container_name: nextcloud-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: nextcloudpass
+    volumes:
+      - nextcloud_db:/var/lib/mysql
+
+  # Aplicação Nextcloud - Sincronização e nuvem privada
+  nextcloud-app:
+    image: nextcloud
+    container_name: nextcloud-app
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - nextcloud_app:/var/www/html
+      - /backup/cloud:/var/www/html/data # Persistência no disco de 1TB
+    depends_on:
+      - nextcloud-db
+
+# Redes customizadas para isolamento de containers
 networks:
   default:
     name: homelab_network
+
+# Volumes nomeados para o banco e a aplicação
+volumes:
+  nextcloud_db:
+  nextcloud_app:
