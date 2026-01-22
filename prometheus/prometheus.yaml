@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s # Intervalo de coleta de métricas
+
+scrape_configs:
+  # Coleta dados do hardware (CPU, RAM, Discos)
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Coleta dados específicos de cada container
+  - job_name: 'containers'
+    static_configs:
+      - targets: ['cadvisor:8080']
